@@ -1,0 +1,22 @@
+[package]
+name = "ztp"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "ztplib"
+path = "src/lib/mod.rs"
+
+[[bin]]
+name = "ztp"
+path = "src/bin/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = "4.4.0"
+serde = { version = "1.0.193", features = ["derive"] }
+tokio = { version = "1.35.1", features = ["full"] }
+
+[dev-dependencies]
+reqwest = "0.11.23"
