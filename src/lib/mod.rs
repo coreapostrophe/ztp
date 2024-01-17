@@ -39,6 +39,7 @@ async fn health_check() -> impl Responder {
     HttpResponse::Ok().finish()
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 struct FormData {
     email: String,
