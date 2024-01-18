@@ -1,12 +1,14 @@
 use std::net::TcpListener;
 
+use ztplib::startup::ZtpServer;
+
 fn spawn_app() -> String {
     let addr = "127.0.0.1";
     let listener =
         TcpListener::bind(&format!("{}:0", addr)).expect("Failed to bind to random port");
 
     let port = listener.local_addr().unwrap().port();
-    let server = ztplib::run(listener).expect("Failed to bind address");
+    let server = ZtpServer::run(listener).expect("Failed to bind address");
 
     let _ = tokio::spawn(server);
 
