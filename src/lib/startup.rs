@@ -1,6 +1,7 @@
 use std::net::TcpListener;
 
 use actix_web::{dev::Server, web, App, HttpServer};
+use sqlx::PgPool;
 
 use crate::routes::{health_check::health_check, subscriptions::subscribe};
 
@@ -9,26 +10,29 @@ pub enum BindOption<'a> {
     Listener(TcpListener),
 }
 
-impl<'a> Into<BindOption<'a>> for (&'a str, u16) {
-    fn into(self) -> BindOption<'a> {
-        BindOption::SocketAddr(self)
+impl<'a> From<(&'a str, u16)> for BindOption<'a> {
+    fn from(value: (&'a str, u16)) -> Self {
+        BindOption::SocketAddr(value)
     }
 }
 
-impl<'a> Into<BindOption<'a>> for TcpListener {
-    fn into(self) -> BindOption<'a> {
-        BindOption::Listener(self)
+impl<'a> From<TcpListener> for BindOption<'a> {
+    fn from(value: TcpListener) -> Self {
+        BindOption::Listener(value)
     }
 }
 
 pub struct ZtpServer;
 
 impl ZtpServer {
-    pub fn run<'a>(option: impl Into<BindOption<'a>>) -> std::io::Result<Server> {
-        let http_server = HttpServer::new(|| {
+    pub fn run<'a>(option: impl Into<BindOption<'a>>, db_pool: PgPool) -> std::io::Result<Server> {
+        let db_pool = web::Data::new(db_pool);
+
+        let http_server = HttpServer::new(move || {
             App::new()
                 .route("/health_check", web::get().to(health_check))
                 .route("/subscriptions", web::post().to(subscribe))
+                .app_data(db_pool.clone())
         });
 
         let server = match option.into() {
