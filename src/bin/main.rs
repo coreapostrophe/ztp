@@ -1,14 +1,14 @@
 use std::net::TcpListener;
 
-use env_logger::Env;
 use sqlx::PgPool;
-use ztplib::{configuration::get_configuration, startup::ZtpServer};
+use ztplib::{configuration::ZtpConfiguration, startup::ZtpServer, telemetry::ZtpTelemetry};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    let subscriber = ZtpTelemetry::get_subscriber("ztp", "info");
+    ZtpTelemetry::init_subscriber(subscriber);
 
-    let config = get_configuration().expect("Failed to read configuration");
+    let config = ZtpConfiguration::get_configuration().expect("Failed to read configuration");
     let connection_pool = PgPool::connect(&config.database.connection_string())
         .await
         .expect("to connect to Postgres.");

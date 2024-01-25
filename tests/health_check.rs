@@ -3,7 +3,7 @@ use std::net::TcpListener;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use ztplib::{
-    configuration::{get_configuration, DatabaseSettings},
+    configuration::{DatabaseSettings, ZtpConfiguration},
     startup::ZtpServer,
 };
 
@@ -20,7 +20,8 @@ impl TestApp {
         let port = listener.local_addr().unwrap().port();
         let address = format!("{}:{}", domain, port);
 
-        let mut config = get_configuration().expect("Failed to read configuration.");
+        let mut config =
+            ZtpConfiguration::get_configuration().expect("Failed to read configuration.");
         config.database.database_name = Uuid::new_v4().to_string();
 
         let connection_pool = Self::configure_database(&config.database).await;

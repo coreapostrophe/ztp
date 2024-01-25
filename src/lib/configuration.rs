@@ -31,13 +31,17 @@ impl DatabaseSettings {
     }
 }
 
-pub fn get_configuration() -> Result<Settings, config::ConfigError> {
-    let settings = config::Config::builder()
-        .add_source(config::File::new(
-            "Configuration.toml",
-            config::FileFormat::Toml,
-        ))
-        .build()?;
+pub struct ZtpConfiguration;
 
-    settings.try_deserialize::<Settings>()
+impl ZtpConfiguration {
+    pub fn get_configuration() -> Result<Settings, config::ConfigError> {
+        let settings = config::Config::builder()
+            .add_source(config::File::new(
+                "Configuration.toml",
+                config::FileFormat::Toml,
+            ))
+            .build()?;
+
+        settings.try_deserialize::<Settings>()
+    }
 }
