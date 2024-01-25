@@ -14,12 +14,10 @@ impl ZtpTelemetry {
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(env_filter.into()));
         let formatting_layer = BunyanFormattingLayer::new(name.into(), std::io::stdout);
 
-        let subscriber = Registry::default()
+        Registry::default()
             .with(env_filter)
             .with(JsonStorageLayer)
-            .with(formatting_layer);
-
-        subscriber
+            .with(formatting_layer)
     }
 
     pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
