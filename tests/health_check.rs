@@ -1,11 +1,29 @@
 use std::net::TcpListener;
 
+use once_cell::sync::Lazy;
+use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use ztplib::{
     configuration::{DatabaseSettings, ZtpConfiguration},
     startup::ZtpServer,
+    telemetry::ZtpTelemetry,
 };
+
+static TRACING: Lazy<()> = Lazy::new(|| {
+    let default_filter_level = "info";
+    let subscriber_name = "test";
+
+    if std::env::var("TEST_LOG").is_ok() {
+        let subscriber =
+            ZtpTelemetry::get_subscriber(subscriber_name, default_filter_level, std::io::stdout);
+        ZtpTelemetry::init_subscriber(subscriber);
+    } else {
+        let subscriber =
+            ZtpTelemetry::get_subscriber(subscriber_name, default_filter_level, std::io::sink);
+        ZtpTelemetry::init_subscriber(subscriber);
+    }
+});
 
 pub struct TestApp {
     pub address: String,
@@ -14,6 +32,8 @@ pub struct TestApp {
 
 impl TestApp {
     pub async fn spawn() -> Self {
+        Lazy::force(&TRACING);
+
         let domain = "127.0.0.1";
         let listener =
             TcpListener::bind(&format!("{}:0", domain)).expect("Failed to bind to random port.");
@@ -38,15 +58,16 @@ impl TestApp {
     }
 
     async fn configure_database(config: &DatabaseSettings) -> PgPool {
-        let mut connection = PgConnection::connect(&config.connection_string_without_db())
-            .await
-            .expect("Failed to connect to Postgres");
+        let mut connection =
+            PgConnection::connect(&config.connection_string_without_db().expose_secret())
+                .await
+                .expect("Failed to connect to Postgres");
         connection
             .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
             .await
             .expect("Failed to create database.");
 
-        let connection_pool = PgPool::connect(&config.connection_string())
+        let connection_pool = PgPool::connect(&config.connection_string().expose_secret())
             .await
             .expect("Failed to connect to Postgres.");
         sqlx::migrate!("./migrations")

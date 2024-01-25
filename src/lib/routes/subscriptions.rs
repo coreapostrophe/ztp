@@ -2,7 +2,6 @@ use actix_web::{web, HttpResponse, Responder};
 use chrono::Utc;
 use serde::Deserialize;
 use sqlx::PgPool;
-use tracing::Instrument;
 use uuid::Uuid;
 
 #[allow(dead_code)]
@@ -12,20 +11,30 @@ pub struct FormData {
     name: String,
 }
 
-pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> impl Responder {
-    let request_id = Uuid::new_v4();
-
-    let request_span = tracing::info_span!(
-        "Adding a new subscriber.",
-        %request_id,
+#[tracing::instrument(
+    name = "Adding a new subscriber.",
+    skip(form, pool),
+    fields(
         subscriber_email = %form.email,
         subscriber_name = %form.name
-    );
-    let _request_span_guard = request_span.enter();
+    )
+)]
+pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> impl Responder {
+    match insert_subscriber(&form, &pool).await {
+        Ok(_) => HttpResponse::Ok().finish(),
+        Err(_) => HttpResponse::InternalServerError().finish(),
+    }
+}
 
-    let query_span = tracing::info_span!("Saving new subscriber details in the database.");
-
-    let query_result = sqlx::query!(
+#[tracing::instrument(
+    name = "Saving new subscriber details in the database.",
+    skip(form, pool)
+)]
+pub async fn insert_subscriber(
+    form: &web::Form<FormData>,
+    pool: &web::Data<PgPool>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
         VALUES ($1, $2, $3, $4)
@@ -36,14 +45,11 @@ pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> im
         Utc::now()
     )
     .execute(pool.get_ref())
-    .instrument(query_span)
-    .await;
+    .await
+    .map_err(|error| {
+        tracing::error!("Failed to execute query: {:?}.", error);
+        error
+    })?;
 
-    match query_result {
-        Ok(_) => HttpResponse::Ok().finish(),
-        Err(error) => {
-            tracing::error!("Failed to execute query: {:?}.", error);
-            HttpResponse::InternalServerError().finish()
-        }
-    }
+    Ok(())
 }
