@@ -1,7 +1,6 @@
 use std::net::TcpListener;
 
-use secrecy::ExposeSecret;
-use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 use ztplib::{configuration::ZtpConfiguration, startup::ZtpServer, telemetry::ZtpTelemetry};
 
 #[tokio::main]
@@ -10,8 +9,7 @@ async fn main() -> std::io::Result<()> {
     ZtpTelemetry::init_subscriber(subscriber);
 
     let config = ZtpConfiguration::get_configuration().expect("Failed to read configuration");
-    let connection_pool = PgPool::connect_lazy(config.database.connection_string().expose_secret())
-        .expect("Failed to create Postgres connection pool.");
+    let connection_pool = PgPoolOptions::new().connect_lazy_with(config.database.with_db());
     let listener = TcpListener::bind((config.application.host, config.application.port))?;
 
     ZtpServer::run(listener, connection_pool)?.await
